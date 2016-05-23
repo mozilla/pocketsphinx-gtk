@@ -8,7 +8,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 set(SOURCE_FILES main.cpp pocketsphinx_gtk.cpp pocketsphinx_gtk.h)
 
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(GTK3 REQUIRED gtk+-2.*)
+pkg_check_modules(GTK3 REQUIRED gtk+-2.0)
 
 include_directories(${GTK3_INCLUDE_DIRS})
 include_directories(/Users/anatal/projects/mozilla/vaani-iot/pocketsphinx/lib/ps/include/ /Users/anatal/projects/mozilla/vaani-iot/pocketsphinx/lib/ps/include/sphinxbase/ /Users/anatal/projects/mozilla/vaani-iot/pocketsphinx/lib/ps/include/pocketsphinx/)
