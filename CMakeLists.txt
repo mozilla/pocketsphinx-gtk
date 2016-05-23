@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.0)
 project(pocketsphinx_gtk)
 
 #include_directories(/usr/local/include/gtk-2.0/ /usr/local/Cellar/glib/2.46.2/include/glib-2.0/ /usr/local/Cellar/glib/2.46.2/lib/glib-2.0/include/ /usr/local/Cellar/cairo/1.14.6_1/include/cairo/ /usr/local/Cellar/pango/1.38.1/include/pango-1.0/ /usr/local/Cellar/gtk+/2.24.30/lib/gtk-2.0/include/ /usr/local/Cellar/gdk-pixbuf/2.32.3/include/gdk-pixbuf-2.0/ /usr/local/Cellar/atk/2.18.0_1/include/atk-1.0/)
