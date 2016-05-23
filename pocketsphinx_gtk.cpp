@@ -94,7 +94,7 @@ recognize_from_microphone(void *args)
 int pocketsphinxstart(){
     config = cmd_ln_init(NULL, ps_args(), TRUE,
                          "-hmm", "/Users/anatal/projects/mozilla/vaani-iot/pocketsphinx/lib/ps/share/pocketsphinx/model/en-us/en-us",
-                         "-keyphrase", "marieta",
+                         "-keyphrase", "ok vaani",
                          "-dict", "/Users/anatal/projects/mozilla/vaani-iot/pocketsphinx/lib/ps/share/pocketsphinx/model/en-us/cmudict-en-us.dict",
                          "-kws_threshold", "1e-20",
                          NULL);
