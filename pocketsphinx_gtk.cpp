@@ -57,7 +57,8 @@ recognize_from_microphone(void *args)
 
     if (ps_start_utt(ps) < 0)
         E_FATAL("Failed to start utterance\n");
-    utt_started = FALSE;
+
+    utt_started = TRUE;
     printf("READY....\n");
 
     for (;;) {
@@ -66,24 +67,44 @@ recognize_from_microphone(void *args)
         }
         if ((k = ad_read(ad, adbuf, 2048)) < 0)
             E_FATAL("Failed to read audio\n");
-        ps_process_raw(ps, adbuf, k, FALSE, FALSE);
-        in_speech = ps_get_in_speech(ps);
-        if (in_speech && !utt_started) {
-            utt_started = TRUE;
-            printf("Listening...\n");
-        }
-        if (!in_speech && utt_started) {
-            /* speech -> silence transition, time to start new utterance  */
-            ps_end_utt(ps);
-            hyp = ps_get_hyp(ps, NULL );
-            if (hyp != NULL)
-                printf("%s\n", hyp);
 
+        ps_process_raw(ps, adbuf, k, FALSE, FALSE);
+
+
+        in_speech = ps_get_in_speech(ps);
+        if (in_speech){
+            printf("Has speech...\n");
+        } else {
+            printf("Don' Have speech...\n");
+        }
+        /*
+     if (in_speech && !utt_started) {
+         utt_started = TRUE;
+         printf("Listening...\n");
+     }
+
+     if (!in_speech && utt_started) {
+     */
+
+        hyp = ps_get_hyp(ps, NULL );
+        if (hyp != NULL) {
+            printf("FOUND!! Go to Kaldi!  %s\n", hyp);
+            ps_end_utt(ps);
             if (ps_start_utt(ps) < 0)
                 E_FATAL("Failed to start utterance\n");
+        }
+
+
+        /*
+        if (utt_started)
+            /* speech -> silence transition, time to start new utterance
+
             utt_started = FALSE;
             printf("READY....\n");
         }
+        */
+
+
         sleep_msec(100);
     }
     ad_close(ad);
@@ -94,7 +115,7 @@ recognize_from_microphone(void *args)
 int pocketsphinxstart(){
     config = cmd_ln_init(NULL, ps_args(), TRUE,
                          "-hmm", "/Users/anatal/projects/mozilla/vaani-iot/pocketsphinx/lib/ps/share/pocketsphinx/model/en-us/en-us",
-                         "-keyphrase", "ok vaani",
+                         "-keyphrase", "wake up",
                          "-dict", "/Users/anatal/projects/mozilla/vaani-iot/pocketsphinx/lib/ps/share/pocketsphinx/model/en-us/cmudict-en-us.dict",
                          "-kws_threshold", "1e-20",
                          NULL);
