@@ -4,19 +4,29 @@
 
 GtkWidget *progress_bar;
 pthread_t mic_thread;
+GtkWidget *button_start;
+GdkColor colorbtn;
+
+void change_btncolor(const gchar *color){
+    gdk_color_parse (color, &colorbtn);
+    gtk_widget_modify_bg ( GTK_WIDGET(button_start), GTK_STATE_NORMAL, &colorbtn);
+}
 
 void ClickCallback(GtkWidget *widget, GdkEventButton *event, gpointer callback_data)
 {
     // show which button was clicked
-    pthread_create (&mic_thread, NULL, recognize_from_microphone, NULL);
-    std::cerr << "button pressed: "  << gtk_progress_bar_get_fraction(GTK_PROGRESS_BAR(progress_bar));
-    gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(progress_bar), 0.01 + gtk_progress_bar_get_fraction(GTK_PROGRESS_BAR(progress_bar)));
+    if (change_decoder_state()){
+        change_btncolor("red");
+        gtk_button_set_label(GTK_BUTTON(button_start), "Touch to start listening.");
+    } else {
+        change_btncolor("yellow");
+        gtk_button_set_label(GTK_BUTTON(button_start), "Listening...");
+    }
 }
 
 int render_gtk(int argc, char *argv[]){
     GtkWidget *window;
     GtkWidget *label;
-    GtkWidget *button_start;
     GtkWidget* hbox;
 
     gtk_init(&argc, &argv);
@@ -44,10 +54,10 @@ int render_gtk(int argc, char *argv[]){
     ** Assign the variable "label" to a new GTK label,
     ** with the text "Hello, world!"
     */
-    label = gtk_label_new("Hello, world!");
+    //label = gtk_label_new("Hello, world!");
 
     // Add the button onto the main window
-    button_start = gtk_button_new_with_label ("Touch to start listening");
+    button_start = gtk_button_new_with_label ("Touch to start listening.");
 
     hbox = gtk_hbox_new(true, 0);
 
@@ -55,20 +65,21 @@ int render_gtk(int argc, char *argv[]){
 
     gtk_container_add(GTK_CONTAINER(hbox), button_start);
     /* Plot the label onto the main window */
-    gtk_container_add(GTK_CONTAINER(hbox), label);
-    gtk_container_add(GTK_CONTAINER(hbox), progress_bar);
+    //gtk_container_add(GTK_CONTAINER(hbox), label);
+    //gtk_container_add(GTK_CONTAINER(hbox), progress_bar);
 
     // add the hbox to the window
     gtk_container_add(GTK_CONTAINER(window), hbox);
     g_signal_connect(G_OBJECT(button_start), "button_press_event", G_CALLBACK(ClickCallback), NULL);
 
+    change_btncolor("red");
+
+    // inicia thread mike
+    pthread_create(&mic_thread, NULL, recognize_from_microphone, NULL);
+
     /* Make sure that everything, window and label, are visible */
     gtk_widget_show_all(window);
 
-    /*
-    ** Start the main loop, and do nothing (block) until
-    ** the application is closed
-    */
     gtk_main();
 }
 

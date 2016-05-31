@@ -3,6 +3,7 @@
 //
 
 #include <pocketsphinx/pocketsphinx.h>
+#include <gtk/gtk.h>
 
 
 #ifndef POCKETSPHINX_GTK_POCKETSPHINX_H_H
@@ -11,5 +12,6 @@
 int pocketsphinxstart();
 void * recognize_from_microphone(void *args);
 void destroy_ps();
+bool change_decoder_state();
 
 #endif //POCKETSPHINX_GTK_POCKETSPHINX_H_H

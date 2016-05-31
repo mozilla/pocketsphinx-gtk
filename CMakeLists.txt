@@ -3,7 +3,7 @@ project(pocketsphinx_gtk)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
-set(SOURCE_FILES main.cpp pocketsphinx_gtk.cpp pocketsphinx_gtk.h)
+set(SOURCE_FILES main.cpp pocketsphinx_gtk.cpp pocketsphinx_gtk.h main.h)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTK3 REQUIRED gtk+-2.0)
