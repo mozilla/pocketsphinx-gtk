@@ -6,8 +6,6 @@
 #include <sphinxbase/ad.h>
 #include <sphinxbase/err.h>
 #include <sys/select.h>
-#include <pthread.h>
-#include <unistd.h>
 #include "pocketsphinx_gtk.h"
 #include "main.h"
 
@@ -36,7 +34,7 @@ recognize_from_microphone(void *args)
 {
     ad_rec_t *ad;
     int16 adbuf[2048];
-    uint8 utt_started, in_speech;
+    uint8 in_speech;
     int32 k;
     char const *hyp;
 
@@ -50,8 +48,7 @@ recognize_from_microphone(void *args)
     if (ps_start_utt(ps) < 0)
         E_FATAL("Failed to start utterance\n");
 
-    utt_started = TRUE;
-    printf("READY....\n");
+    E_INFO("READY....\n");
 
     for (;;) {
         if (decoder_paused){
@@ -64,25 +61,24 @@ recognize_from_microphone(void *args)
         in_speech = ps_get_in_speech(ps);
 /*
         if (in_speech){
-            printf("Has speech...\n");
+            E_INFO("Has speech...\n");
         } else {
-            printf("Don' Have speech...\n");
+            E_INFO("Don' Have speech...\n");
         }
 */
         hyp = ps_get_hyp(ps, NULL );
         if (hyp != NULL) {
-            printf("FOUND!! Go to Kaldi!  %s\n", hyp);
+            E_INFO("FOUND!! Go to Kaldi!  %s\n", hyp);
             ps_end_utt(ps);
             change_btncolor("green");
             system("play /Users/anatal/ClionProjects/pocketsphinx_gtk/spot.wav");
-            sleep_msec(3000);
             change_btncolor("yellow");
 
             if (ps_start_utt(ps) < 0)
                 E_FATAL("Failed to start utterance\n");
         }
 
-        sleep_msec(100);
+        sleep_msec(50);
     }
     ad_close(ad);
 
