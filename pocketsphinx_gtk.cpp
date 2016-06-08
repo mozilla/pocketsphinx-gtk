@@ -11,7 +11,13 @@
 #include <glib/gprintf.h>
 #include <glib/gmain.h>
 
-#define MODELDIR  "/Users/anatal/ClionProjects/pocketsphinx_gtk/models"
+#ifdef RPI
+#define MODELDIR  "/home/pi/projects/pocketsphinx_gtk/"
+#define MIC_BUF_SIZE 4096
+#else
+#define MODELDIR  "/Users/anatal/ClionProjects/pocketsphinx_gtk/"
+#define MIC_BUF_SIZE 2048
+#endif
 
 ps_decoder_t *ps;
 cmd_ln_t *config;
@@ -35,7 +41,7 @@ void *
 recognize_from_microphone(void *args)
 {
     ad_rec_t *ad;
-    int16 adbuf[2048];
+    int16 adbuf[MIC_BUF_SIZE];
     uint8 in_speech;
     int32 k;
     char const *hyp;
@@ -57,11 +63,13 @@ recognize_from_microphone(void *args)
     E_INFO("READY....\n");
 
     for (;;) {
+
+        if ((k = ad_read(ad, adbuf, MIC_BUF_SIZE)) < 0)
+            E_FATAL("Failed to read audio\n");
+
         if (decoder_paused){
             continue;
         }
-        if ((k = ad_read(ad, adbuf, 4096)) < 0)
-            E_FATAL("Failed to read audio\n");
 
 /*
  *      POCKETSPHINX VAD
@@ -83,7 +91,7 @@ recognize_from_microphone(void *args)
                 if (score >= 0.9){
                     gdk_threads_add_idle((GSourceFunc)change_btncolor,(gpointer)"green");
                     //change_btncolor("green");
-                    system("play /Users/anatal/ClionProjects/pocketsphinx_gtk/spot.wav");
+                    system("play " MODELDIR "/spot.wav");
                     gdk_threads_add_idle((GSourceFunc)change_btncolor,(gpointer)"yellow");
                     E_INFO("FOUND!!  %s\n", hyp);
 
@@ -93,7 +101,7 @@ recognize_from_microphone(void *args)
                         total_silence  = 0;
                         skip_bytes = 1;
                         // open the file that will be used by kaldi
-                        pFile = fopen ("/Users/anatal/ClionProjects/pocketsphinx_gtk/audio.raw","w");
+                        pFile = fopen (MODELDIR "/audio.raw","w");
                     }
                 }
                 if (ps_start_utt(ps) < 0)
@@ -153,9 +161,9 @@ change_decoder_state(){
 
 int pocketsphinxstart(){
     config = cmd_ln_init(NULL, ps_args(), TRUE,
-                         "-hmm", MODELDIR "/std-en-us/",
+                         "-hmm", MODELDIR "models/std-en-us/",
                          "-keyphrase", "alexa",
-                         "-dict", MODELDIR "/cmudict-en-us.dict",
+                         "-dict", MODELDIR "models/cmudict-en-us.dict",
                          "-kws_threshold", "1e-20",
                          NULL);
     if (config == NULL) {
