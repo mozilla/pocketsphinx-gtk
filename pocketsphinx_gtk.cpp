@@ -11,12 +11,13 @@
 #include <glib/gprintf.h>
 #include <glib/gmain.h>
 
+
+#define MIC_BUF_SIZE 4096
+
 #ifdef RPI
 #define MODELDIR  "/home/pi/projects/pocketsphinx-gtk/"
-#define MIC_BUF_SIZE 4096
 #else
 #define MODELDIR  "/Users/anatal/ClionProjects/pocketsphinx_gtk/"
-#define MIC_BUF_SIZE 2048
 #endif
 
 ps_decoder_t *ps;
