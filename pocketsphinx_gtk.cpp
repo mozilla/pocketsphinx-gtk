@@ -12,7 +12,7 @@
 #include <glib/gmain.h>
 
 #ifdef RPI
-#define MODELDIR  "/home/pi/projects/pocketsphinx_gtk/"
+#define MODELDIR  "/home/pi/projects/pocketsphinx-gtk/"
 #define MIC_BUF_SIZE 4096
 #else
 #define MODELDIR  "/Users/anatal/ClionProjects/pocketsphinx_gtk/"
