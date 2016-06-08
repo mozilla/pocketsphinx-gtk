@@ -37,7 +37,11 @@ recognize_from_microphone(void *args)
     uint8 in_speech;
     int32 k;
     char const *hyp;
+    FILE * pFile;
+    int total_silence = 0;
+    int skip_bytes = 0;
 
+    int active_decoder = 0; // 0 = pocketsphinx ; 1 = kaldi
     if ((ad = ad_open_dev(cmd_ln_str_r(config, "-adcdev"),
                           (int) cmd_ln_float32_r(config,
                                                  "-samprate"))) == NULL)
@@ -57,25 +61,56 @@ recognize_from_microphone(void *args)
         if ((k = ad_read(ad, adbuf, 2048)) < 0)
             E_FATAL("Failed to read audio\n");
 
-        ps_process_raw(ps, adbuf, k, FALSE, FALSE);
-        in_speech = ps_get_in_speech(ps);
 /*
+ *      POCKETSPHINX VAD
+        in_speech = ps_get_in_speech(ps);
         if (in_speech){
             E_INFO("Has speech...\n");
         } else {
             E_INFO("Don' Have speech...\n");
         }
 */
-        hyp = ps_get_hyp(ps, NULL );
-        if (hyp != NULL) {
-            E_INFO("FOUND!! Go to Kaldi!  %s\n", hyp);
-            ps_end_utt(ps);
-            change_btncolor("green");
-            system("play /Users/anatal/ClionProjects/pocketsphinx_gtk/spot.wav");
-            change_btncolor("yellow");
 
-            if (ps_start_utt(ps) < 0)
-                E_FATAL("Failed to start utterance\n");
+        if (active_decoder == 0){
+            // process pocketsphinx
+            ps_process_raw(ps, adbuf, k, FALSE, FALSE);
+            hyp = ps_get_hyp(ps, NULL );
+            if (hyp != NULL) {
+                ps_end_utt(ps);
+                float score = get_score();
+                if (score >= 0.9){
+                    change_btncolor("green");
+                    system("play /Users/anatal/ClionProjects/pocketsphinx_gtk/spot.wav");
+                    E_INFO("FOUND!! Go to Kaldi!  %s\n", hyp);
+                    change_btncolor("yellow");
+                    active_decoder = 1;
+                    total_silence  = 0;
+                    skip_bytes = 1;
+                    // open the file that will be used by kaldi
+                    pFile = fopen ("/Users/anatal/ClionProjects/pocketsphinx_gtk/audio.raw","w");
+                }
+                if (ps_start_utt(ps) < 0)
+                    E_FATAL("Failed to start utterance\n");
+            }
+        } else {
+            E_INFO("PROCESSING Kaldi!\n");
+
+            if (skip_bytes > 0 && skip_bytes < 10){
+                skip_bytes++;
+                E_INFO("Skipping bytes..\n");
+                continue;
+            } else if (skip_bytes == 10) {
+                skip_bytes = 0;
+            }
+
+            if (pFile!=NULL)
+            {
+                fwrite(adbuf,sizeof(int16),k,pFile);
+                total_silence += 50;
+                E_INFO("Total Silence  %i\n", total_silence);
+
+                //fclose (pFile);
+            }
         }
 
         sleep_msec(50);
@@ -85,10 +120,28 @@ recognize_from_microphone(void *args)
     return NULL;
 }
 
+float get_score(){
+    ps_seg_t *iter = ps_seg_iter(ps);
+    float conf;
+
+    while (iter != NULL)
+    {
+        int32 sf, ef, pprob;
+
+        ps_seg_frames (iter, &sf, &ef);
+        pprob = ps_seg_prob (iter, NULL, NULL, NULL);
+        conf = logmath_exp(ps_get_logmath(ps), pprob);
+        printf ("%s - %f\n", ps_seg_word (iter), conf);
+        iter = ps_seg_next (iter);
+    }
+
+    return conf;
+}
+
+
 bool
 change_decoder_state(){
-    decoder_paused = !decoder_paused;
-    return decoder_paused;
+    return (decoder_paused = !decoder_paused);
 }
 
 int pocketsphinxstart(){

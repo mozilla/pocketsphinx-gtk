@@ -13,5 +13,6 @@ int pocketsphinxstart();
 void * recognize_from_microphone(void *args);
 void destroy_ps();
 bool change_decoder_state();
+float get_score();
 
 #endif //POCKETSPHINX_GTK_POCKETSPHINX_H_H
