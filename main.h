@@ -6,6 +6,7 @@
 #ifndef POCKETSPHINX_GTK_MAIN_H_H
 #define POCKETSPHINX_GTK_MAIN_H_H
 
+bool online_on = FALSE;
 void change_btncolor(const gchar *color);
 
 

@@ -22,24 +22,23 @@ void change_btncolor(const gchar *color){
             "   -GtkWidget-focus-line-width: 0;\n"
             "   border-radius: 15px;\n"
             "   font: Sans 16;\n"
-            "   color: blue;\n"         /* font color */
+            "   color: blue;\n"
             "   border-style: outset;\n"
             "   border-width: 2px;\n"
             "   padding: 2px;\n"
             "}\n" , color);
     gtk_css_provider_load_from_data (GTK_CSS_PROVIDER (provider), css, -1, NULL);
     g_object_unref (provider);
-
 }
 
 void ClickCallback(GtkWidget *widget, GdkEventButton *event, gpointer callback_data)
 {
     // show which button was clicked
     if (change_decoder_state()){
-        change_btncolor("red");
+        gdk_threads_add_idle((GSourceFunc)change_btncolor,(gpointer)"red");
         gtk_button_set_label(GTK_BUTTON(button_start), "Touch to start listening.");
     } else {
-        change_btncolor("yellow");
+        gdk_threads_add_idle((GSourceFunc)change_btncolor,(gpointer)"yellow");
         gtk_button_set_label(GTK_BUTTON(button_start), "Listening...");
     }
 }

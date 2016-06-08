@@ -8,6 +8,8 @@
 #include <sys/select.h>
 #include "pocketsphinx_gtk.h"
 #include "main.h"
+#include <glib/gprintf.h>
+#include <glib/gmain.h>
 
 #define MODELDIR  "/Users/anatal/ClionProjects/pocketsphinx_gtk/models"
 
@@ -79,15 +81,19 @@ recognize_from_microphone(void *args)
                 ps_end_utt(ps);
                 float score = get_score();
                 if (score >= 0.9){
-                    change_btncolor("green");
+                    gdk_threads_add_idle((GSourceFunc)change_btncolor,(gpointer)"green");
+                    //change_btncolor("green");
                     system("play /Users/anatal/ClionProjects/pocketsphinx_gtk/spot.wav");
                     E_INFO("FOUND!! Go to Kaldi!  %s\n", hyp);
-                    change_btncolor("yellow");
-                    active_decoder = 1;
-                    total_silence  = 0;
-                    skip_bytes = 1;
-                    // open the file that will be used by kaldi
-                    pFile = fopen ("/Users/anatal/ClionProjects/pocketsphinx_gtk/audio.raw","w");
+                    gdk_threads_add_idle((GSourceFunc)change_btncolor,(gpointer)"yellow");
+
+                    if (online_on){
+                        active_decoder = 1;
+                        total_silence  = 0;
+                        skip_bytes = 1;
+                        // open the file that will be used by kaldi
+                        pFile = fopen ("/Users/anatal/ClionProjects/pocketsphinx_gtk/audio.raw","w");
+                    }
                 }
                 if (ps_start_utt(ps) < 0)
                     E_FATAL("Failed to start utterance\n");
