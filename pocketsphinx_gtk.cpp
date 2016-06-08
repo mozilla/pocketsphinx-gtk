@@ -60,7 +60,7 @@ recognize_from_microphone(void *args)
         if (decoder_paused){
             continue;
         }
-        if ((k = ad_read(ad, adbuf, 2048)) < 0)
+        if ((k = ad_read(ad, adbuf, 4096)) < 0)
             E_FATAL("Failed to read audio\n");
 
 /*
@@ -84,10 +84,11 @@ recognize_from_microphone(void *args)
                     gdk_threads_add_idle((GSourceFunc)change_btncolor,(gpointer)"green");
                     //change_btncolor("green");
                     system("play /Users/anatal/ClionProjects/pocketsphinx_gtk/spot.wav");
-                    E_INFO("FOUND!! Go to Kaldi!  %s\n", hyp);
                     gdk_threads_add_idle((GSourceFunc)change_btncolor,(gpointer)"yellow");
+                    E_INFO("FOUND!!  %s\n", hyp);
 
                     if (online_on){
+                        E_INFO("Go to Kaldi!  %s\n", hyp);
                         active_decoder = 1;
                         total_silence  = 0;
                         skip_bytes = 1;
