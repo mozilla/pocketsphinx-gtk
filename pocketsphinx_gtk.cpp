@@ -91,7 +91,6 @@ recognize_from_microphone(void *args)
                 float score = get_score();
                 if (score >= 0.9){
                     gdk_threads_add_idle((GSourceFunc)change_btncolor,(gpointer)"green");
-                    //change_btncolor("green");
                     system("play " MODELDIR "/spot.wav");
                     gdk_threads_add_idle((GSourceFunc)change_btncolor,(gpointer)"yellow");
                     E_INFO("FOUND!!  %s\n", hyp);
@@ -163,7 +162,7 @@ change_decoder_state(){
 int pocketsphinxstart(){
     config = cmd_ln_init(NULL, ps_args(), TRUE,
                          "-hmm", MODELDIR "models/std-en-us/",
-                         "-keyphrase", "alexa",
+                         "-keyphrase", "foxy",
                          "-dict", MODELDIR "models/cmudict-en-us.dict",
                          "-kws_threshold", "1e-20",
                          NULL);
