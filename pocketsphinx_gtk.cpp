@@ -85,6 +85,7 @@ recognize_from_microphone(void *args)
         if (active_decoder == 0){
             // process pocketsphinx
             ps_process_raw(ps, adbuf, k, FALSE, FALSE);
+
             hyp = ps_get_hyp(ps, NULL );
             if (hyp != NULL) {
                 ps_end_utt(ps);
@@ -108,7 +109,7 @@ recognize_from_microphone(void *args)
                     E_FATAL("Failed to start utterance\n");
             }
         } else {
-            E_INFO("PROCESSING Kaldi!\n");
+            E_INFO("PROCESSING TO ONLINE!\n");
 
             if (skip_bytes > 0 && skip_bytes < 10){
                 skip_bytes++;
@@ -120,12 +121,18 @@ recognize_from_microphone(void *args)
 
             if (pFile!=NULL)
             {
-                fwrite(adbuf,sizeof(int16),k,pFile);
-                total_silence += 50;
-                E_INFO("Total Silence  %i\n", total_silence);
 
-                //fclose (pFile);
+                fwrite(adbuf,sizeof(int16),k,pFile);
             }
+
+            E_INFO("Total Silence  %i\n", total_silence);
+            if (total_silence >= 2000){
+                E_INFO("ENOUGH SILENCE. DECODING ON KALDI..\n");
+                active_decoder = 0;
+                fclose (pFile);
+            }
+
+
         }
 
         sleep_msec(50);
