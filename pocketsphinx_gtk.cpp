@@ -13,6 +13,7 @@
 
 
 #define MIC_BUF_SIZE 4096
+#define KWS "foxy"
 
 #ifdef RPI
 #define MODELDIR  "/home/pi/projects/pocketsphinx-gtk/"
@@ -23,6 +24,7 @@
 ps_decoder_t *ps;
 cmd_ln_t *config;
 bool decoder_paused = TRUE;
+bool online_on = true;
 
 /* Sleep for specified msec */
 static void
@@ -49,6 +51,8 @@ recognize_from_microphone(void *args)
     FILE * pFile;
     int total_silence = 0;
     int skip_bytes = 0;
+    char buf_kaldi[512];
+    lbl_s lbl_t;
 
     int active_decoder = 0; // 0 = pocketsphinx ; 1 = kaldi
     if ((ad = ad_open_dev(cmd_ln_str_r(config, "-adcdev"),
@@ -89,12 +93,19 @@ recognize_from_microphone(void *args)
             hyp = ps_get_hyp(ps, NULL );
             if (hyp != NULL) {
                 ps_end_utt(ps);
+                E_INFO("FOUND!!  %s\n", hyp);
+                // get kws score
                 float score = get_score();
-                if (score >= 0.9){
+
+                // set the struct to response
+                sprintf(buf_kaldi,"(%f) %s", score, KWS);
+                lbl_t.type = 'w';
+                strcpy(lbl_t.lblvalue, buf_kaldi);
+                gdk_threads_add_idle((GSourceFunc)update_labels,&lbl_t);
+
+                if (score >= 0.97){
                     gdk_threads_add_idle((GSourceFunc)change_btncolor,(gpointer)"green");
                     system("play " MODELDIR "/spot.wav");
-                    gdk_threads_add_idle((GSourceFunc)change_btncolor,(gpointer)"yellow");
-                    E_INFO("FOUND!!  %s\n", hyp);
 
                     if (online_on){
                         E_INFO("Go to Kaldi!  %s\n", hyp);
@@ -109,9 +120,9 @@ recognize_from_microphone(void *args)
                     E_FATAL("Failed to start utterance\n");
             }
         } else {
-            E_INFO("PROCESSING TO ONLINE!\n");
+            //E_INFO("PROCESSING TO ONLINE!\n");
 
-            if (skip_bytes > 0 && skip_bytes < 10){
+            if (skip_bytes > 0 && skip_bytes < 5){
                 skip_bytes++;
                 E_INFO("Skipping bytes..\n");
                 continue;
@@ -123,13 +134,30 @@ recognize_from_microphone(void *args)
             {
 
                 fwrite(adbuf,sizeof(int16),k,pFile);
+                ps_process_raw(ps, adbuf, k, FALSE, FALSE);
+                in_speech = ps_get_in_speech(ps);
+                if (in_speech){
+                    //E_INFO("Has speech...\n");
+                    total_silence = 0;
+                } else {
+                    //E_INFO("Don' Have speech...\n");
+                    total_silence += 50;
+                }
             }
 
-            E_INFO("Total Silence  %i\n", total_silence);
-            if (total_silence >= 2000){
+            //E_INFO("Total Silence  %i\n", total_silence);
+            if (total_silence >= 1000){
                 E_INFO("ENOUGH SILENCE. DECODING ON KALDI..\n");
                 active_decoder = 0;
                 fclose (pFile);
+                FILE *php = popen("php " MODELDIR "/kaldi.php " MODELDIR "/audio.raw", "r");
+                fgets(buf_kaldi, sizeof(buf_kaldi), php);
+                pclose(php);
+                E_INFO("Result: %s\n", buf_kaldi);
+                lbl_t.type = 'k';
+                strcpy(lbl_t.lblvalue, buf_kaldi);
+                gdk_threads_add_idle((GSourceFunc)update_labels,&lbl_t);
+                gdk_threads_add_idle((GSourceFunc)change_btncolor,(gpointer)"yellow");
             }
 
 
@@ -166,21 +194,19 @@ change_decoder_state(){
     return (decoder_paused = !decoder_paused);
 }
 
-int pocketsphinxstart(){
+void pocketsphinxstart(){
     config = cmd_ln_init(NULL, ps_args(), TRUE,
                          "-hmm", MODELDIR "models/std-en-us/",
-                         "-keyphrase", "foxy",
+                         "-keyphrase", KWS,
                          "-dict", MODELDIR "models/cmudict-en-us.dict",
                          "-kws_threshold", "1e-20",
                          NULL);
     if (config == NULL) {
         fprintf(stderr, "Failed to create config object, see log for details\n");
-        return -1;
     }
     ps = ps_init(config);
     if (ps == NULL) {
         cmd_ln_free_r(config);
-        return 1;
     }
 
     E_INFO("COMPILED ON: %s, AT: %s\n\n", __DATE__, __TIME__);

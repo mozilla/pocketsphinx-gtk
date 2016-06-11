@@ -1,34 +1,68 @@
 #include <gtk/gtk.h>
 #include "pocketsphinx_gtk.h"
 #include <glib/gprintf.h>
+#include <sphinxbase/err.h>
+#include "main.h"
 
 pthread_t mic_thread;
 GtkWidget *button_start;
 GdkScreen *screen;
 GtkCssProvider *provider;
 GdkDisplay *display;
+GtkWidget *label_kaldi, *label_ws;
+GtkWidget *grid;
+
+int main (int argc, char *argv[])
+{
+    pocketsphinxstart();
+    render_gtk(argc, argv);
+    destroy_ps();
+    return 0;
+}
 
 
-void change_btncolor(const gchar *color){
+gboolean update_labels(gpointer *data) {
+    E_INFO("UPDATE LABELS TIPO: %c \n",  ((lbl_s *)data)->type );
+    E_INFO("UPDATE LABELS VALUE: %s \n",  ((lbl_s *)data)->lblvalue );
+    ((((lbl_s *)data)->type) == 'k') ? gtk_label_set_label(GTK_LABEL(label_kaldi), ((lbl_s *)data)->lblvalue) :
+        gtk_label_set_label(GTK_LABEL(label_ws), ((lbl_s *)data)->lblvalue);
+    return FALSE;
+}
+
+
+gboolean change_btncolor(const gchar *color){
+    E_INFO("ADICIONANDO COR: %s \n", color);
     provider = gtk_css_provider_new ();
     gtk_style_context_add_provider_for_screen (screen,
                                                GTK_STYLE_PROVIDER (provider),
                                                GTK_STYLE_PROVIDER_PRIORITY_USER);
-    gchar css[300];
+    gchar css[1024];
     g_sprintf(css,  " GtkWindow {\n"
-            "   background-color: %s;\n"
-            "}\n"
-            " #mybutton {\n"
-            "   -GtkWidget-focus-line-width: 0;\n"
-            "   border-radius: 15px;\n"
-            "   font: Sans 16;\n"
-            "   color: blue;\n"
-            "   border-style: outset;\n"
-            "   border-width: 2px;\n"
-            "   padding: 2px;\n"
-            "}\n" , color);
+                      "   background-color: %s;\n"
+                      "}\n"
+                      " #mybutton {\n"
+                      "   -GtkWidget-focus-line-width: 0;\n"
+                      "   border-radius: 15px;\n"
+                      "   font: Sans 16;\n"
+                      "   color: blue;\n"
+                      "   border-style: outset;\n"
+                      "   border-width: 2px;\n"
+                      "   padding: 20px;\n"
+                      "}\n"
+                      " #label_kaldi {\n"
+                      "   font-size: 30px;\n"
+                      "   font-weight: bold;\n"
+                      "}\n"
+                      " #label_ws {\n"
+                      "   font-size: 30px;\n"
+                      "   font-weight: bold;\n"
+                      "}\n"
+            , color);
     gtk_css_provider_load_from_data (GTK_CSS_PROVIDER (provider), css, -1, NULL);
     g_object_unref (provider);
+
+    // we return false to remove the
+    return FALSE;
 }
 
 void ClickCallback(GtkWidget *widget, GdkEventButton *event, gpointer callback_data)
@@ -36,14 +70,16 @@ void ClickCallback(GtkWidget *widget, GdkEventButton *event, gpointer callback_d
     // show which button was clicked
     if (change_decoder_state()){
         gdk_threads_add_idle((GSourceFunc)change_btncolor,(gpointer)"red");
+        //change_btncolor("red");
         gtk_button_set_label(GTK_BUTTON(button_start), "Touch to start listening.");
     } else {
         gdk_threads_add_idle((GSourceFunc)change_btncolor,(gpointer)"yellow");
+        //change_btncolor("yellow");
         gtk_button_set_label(GTK_BUTTON(button_start), "Listening...");
     }
 }
 
-int render_gtk(int argc, char *argv[]){
+void render_gtk(int argc, char *argv[]){
     GtkWidget *window;
 
     gtk_init(&argc, &argv);
@@ -60,6 +96,21 @@ int render_gtk(int argc, char *argv[]){
     /* Set the window's default size */
     gtk_window_set_default_size(GTK_WINDOW(window), 1024, 768);
 
+    /* Create the main grid */
+    grid = gtk_grid_new ();
+
+    gtk_grid_set_row_spacing (GTK_GRID (grid), 20);
+
+    // attach the grid to the main window
+    gtk_container_add (GTK_CONTAINER (window), grid);
+
+    // align the button on horizontal center
+    gtk_widget_set_halign (GTK_WIDGET(grid),
+                           GTK_ALIGN_CENTER);
+    // align the button on vertical center
+    gtk_widget_set_valign (GTK_WIDGET(grid),
+                           GTK_ALIGN_CENTER);
+
     /*
     ** Map the destroy signal of the window to gtk_main_quit;
     ** When the window is about to be destroyed, we get a notification and
@@ -72,42 +123,43 @@ int render_gtk(int argc, char *argv[]){
     ** with the text "Hello, world!"
     */
 
-    // Add the button onto the main window
+    // label for kaldi results
+    label_kaldi = gtk_label_new ("Kaldi Result" );
+    // add the label to the container
+    gtk_widget_set_name (GTK_WIDGET(label_kaldi),
+                         "label_kaldi");        /* name button so we can apply css to it later */
+    gtk_grid_attach (GTK_GRID (grid), label_kaldi, 0, 2, 1, 1);
+
+    // label for ws results
+    label_ws = gtk_label_new ("WS Result:" );
+    // add the label to the container
+    gtk_widget_set_name (GTK_WIDGET(label_ws),
+                         "label_ws");        /* name button so we can apply css to it later */
+    gtk_grid_attach (GTK_GRID (grid), label_ws, 0, 1, 1, 1);
+
+    // create the main button
     button_start = gtk_button_new_with_label ("Touch to start listening.");
     gtk_widget_set_name (GTK_WIDGET(button_start),
                          "mybutton");        /* name button so we can apply css to it later */
-
-    gtk_widget_set_halign (GTK_WIDGET(button_start),
-                           GTK_ALIGN_CENTER);
-
-    gtk_widget_set_valign (GTK_WIDGET(button_start),
-                           GTK_ALIGN_CENTER);
-
+    // set the button size
     gtk_widget_set_size_request (GTK_WIDGET(button_start),
                                  100, 75);
+    // add the button to the grid
+    gtk_grid_attach (GTK_GRID (grid), button_start, 0, 0, 2, 1);
 
-    gtk_container_add (GTK_CONTAINER(window),
-                       button_start);
 
     display = gdk_display_get_default ();
     screen = gdk_display_get_default_screen (display);
     change_btncolor("red");
-    gtk_widget_show_all (window);
     g_signal_connect(G_OBJECT(button_start), "button_press_event", G_CALLBACK(ClickCallback), NULL);
 
-    // inicia thread mike
+    // start mike thread
     pthread_create(&mic_thread, NULL, recognize_from_microphone, NULL);
 
     /* Make sure that everything, window and label, are visible */
     gtk_widget_show_all(window);
 
+    // start the gtk's main loop (block)
     gtk_main();
 }
 
-int main (int argc, char *argv[])
-{
-    pocketsphinxstart();
-    render_gtk(argc, argv);
-    destroy_ps();
-    return 0;
-}
