@@ -4,6 +4,7 @@ $request = curl_init('http://54.171.129.75/asr/?endofspeech=false');
 
 // send a file
 curl_setopt($request, CURLOPT_POST, true);
+curl_setopt($request, CURLOPT_SAFE_UPLOAD, false);
 curl_setopt(
     $request,
     CURLOPT_POSTFIELDS,
