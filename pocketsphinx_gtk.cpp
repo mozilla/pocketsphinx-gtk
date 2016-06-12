@@ -14,6 +14,7 @@
 
 #define MIC_BUF_SIZE 4096
 #define KWS "foxy"
+#define KWSTHRESHOLD 0.97
 
 #ifdef RPI
 #define MODELDIR  "/home/pi/projects/pocketsphinx-gtk/"
@@ -76,16 +77,6 @@ recognize_from_microphone(void *args)
             continue;
         }
 
-/*
- *      POCKETSPHINX VAD
-        in_speech = ps_get_in_speech(ps);
-        if (in_speech){
-            E_INFO("Has speech...\n");
-        } else {
-            E_INFO("Don' Have speech...\n");
-        }
-*/
-
         if (active_decoder == 0){
             // process pocketsphinx
             ps_process_raw(ps, adbuf, k, FALSE, FALSE);
@@ -98,12 +89,13 @@ recognize_from_microphone(void *args)
                 float score = get_score();
 
                 // set the struct to response
-                sprintf(buf_kaldi,"(%f) %s", score, KWS);
+
+                sprintf(buf_kaldi,"(%f) %s - %s", score, KWS, score > KWSTHRESHOLD ? "(above or equal threshold)" : "(below threshold)");
                 lbl_t.type = 'w';
                 strcpy(lbl_t.lblvalue, buf_kaldi);
                 gdk_threads_add_idle((GSourceFunc)update_labels,&lbl_t);
 
-                if (score >= 0.97){
+                if (score >= KWSTHRESHOLD){
                     gdk_threads_add_idle((GSourceFunc)change_btncolor,(gpointer)"green");
                     system("play " MODELDIR "/spot.wav");
 
@@ -115,18 +107,19 @@ recognize_from_microphone(void *args)
                         // open the file that will be used by kaldi
                         pFile = fopen (MODELDIR "/audio.raw","w");
                     }
+                } else {
+                    system("play " MODELDIR "/basso.wav");
                 }
                 if (ps_start_utt(ps) < 0)
                     E_FATAL("Failed to start utterance\n");
             }
         } else {
             //E_INFO("PROCESSING TO ONLINE!\n");
-
-            if (skip_bytes > 0 && skip_bytes < 5){
+            if (skip_bytes > 0 && skip_bytes < 4){
                 skip_bytes++;
                 E_INFO("Skipping bytes..\n");
                 continue;
-            } else if (skip_bytes == 10) {
+            } else if (skip_bytes == 4) {
                 skip_bytes = 0;
             }
 
@@ -158,15 +151,12 @@ recognize_from_microphone(void *args)
                 strcpy(lbl_t.lblvalue, buf_kaldi);
                 gdk_threads_add_idle((GSourceFunc)update_labels,&lbl_t);
                 gdk_threads_add_idle((GSourceFunc)change_btncolor,(gpointer)"yellow");
+                system("play " MODELDIR "/end_spot.wav");
             }
-
-
         }
-
         sleep_msec(50);
     }
     ad_close(ad);
-
     return NULL;
 }
 
