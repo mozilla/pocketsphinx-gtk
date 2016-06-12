@@ -1,0 +1,4 @@
+switch on /1e-30/
+switch off /1e-30/
+check my messages /1e-270/
+stop /1e-20/

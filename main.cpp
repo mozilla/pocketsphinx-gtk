@@ -9,7 +9,7 @@ GtkWidget *button_start;
 GdkScreen *screen;
 GtkCssProvider *provider;
 GdkDisplay *display;
-GtkWidget *label_kaldi, *label_ws;
+GtkWidget *label_kaldi, *label_ws, *label_off;
 GtkWidget *grid;
 
 int main (int argc, char *argv[])
@@ -24,8 +24,24 @@ int main (int argc, char *argv[])
 gboolean update_labels(gpointer *data) {
     E_INFO("UPDATE LABELS TIPO: %c \n",  ((lbl_s *)data)->type );
     E_INFO("UPDATE LABELS VALUE: %s \n",  ((lbl_s *)data)->lblvalue );
-    ((((lbl_s *)data)->type) == 'k') ? gtk_label_set_label(GTK_LABEL(label_kaldi), ((lbl_s *)data)->lblvalue) :
-        gtk_label_set_label(GTK_LABEL(label_ws), ((lbl_s *)data)->lblvalue);
+
+    switch(((lbl_s *)data)->type ) {
+        // update lbl kaldi
+        case 'k'  :
+            gtk_label_set_label(GTK_LABEL(label_kaldi), ((lbl_s *)data)->lblvalue);
+            break;
+        // update lbl ws
+        case 'w'  :
+            gtk_label_set_label(GTK_LABEL(label_ws), ((lbl_s *)data)->lblvalue);
+            break;
+        // update lbl offline
+        case 'o'  :
+            gtk_label_set_label(GTK_LABEL(label_off), ((lbl_s *)data)->lblvalue);
+            break;
+
+        default :
+            break;
+    }
     return FALSE;
 }
 
@@ -123,19 +139,27 @@ void render_gtk(int argc, char *argv[]){
     ** with the text "Hello, world!"
     */
 
+    // label for ws results
+    label_ws = gtk_label_new ("WS Result" );
+    // add the label to the container
+    gtk_widget_set_name (GTK_WIDGET(label_ws),
+                         "label_ws");        /* name button so we can apply css to it later */
+    gtk_grid_attach (GTK_GRID (grid), label_ws, 0, 1, 1, 1);
+
+    // label for offline results
+    label_off = gtk_label_new ("Offline Result" );
+    // add the label to the container
+    gtk_widget_set_name (GTK_WIDGET(label_off),
+                         "label_ws");        /* name button so we can apply css to it later */
+    gtk_grid_attach (GTK_GRID (grid), label_off, 0, 2, 1, 1);
+
     // label for kaldi results
     label_kaldi = gtk_label_new ("Kaldi Result" );
     // add the label to the container
     gtk_widget_set_name (GTK_WIDGET(label_kaldi),
                          "label_kaldi");        /* name button so we can apply css to it later */
-    gtk_grid_attach (GTK_GRID (grid), label_kaldi, 0, 2, 1, 1);
+    gtk_grid_attach (GTK_GRID (grid), label_kaldi, 0, 3, 1, 1);
 
-    // label for ws results
-    label_ws = gtk_label_new ("WS Result:" );
-    // add the label to the container
-    gtk_widget_set_name (GTK_WIDGET(label_ws),
-                         "label_ws");        /* name button so we can apply css to it later */
-    gtk_grid_attach (GTK_GRID (grid), label_ws, 0, 1, 1, 1);
 
     // create the main button
     button_start = gtk_button_new_with_label ("Touch to start listening.");

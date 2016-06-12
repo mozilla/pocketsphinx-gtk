@@ -54,8 +54,8 @@ recognize_from_microphone(void *args)
     int skip_bytes = 0;
     char buf_kaldi[512];
     char tts_cmd[2048];
-
-    lbl_s lbl_t;
+    float score;
+    lbl_s lbl_w,lbl_o,lbl_k;
 
     int active_decoder = 0; // 0 = pocketsphinx ; 1 = kaldi
     if ((ad = ad_open_dev(cmd_ln_str_r(config, "-adcdev"),
@@ -84,78 +84,160 @@ recognize_from_microphone(void *args)
             ps_process_raw(ps, adbuf, k, FALSE, FALSE);
 
             hyp = ps_get_hyp(ps, NULL );
+
             if (hyp != NULL) {
                 ps_end_utt(ps);
                 E_INFO("FOUND!!  %s\n", hyp);
                 // get kws score
-                float score = get_score();
+                score = get_score();
+
+                // update the main window labels
+                lbl_k.type = 'k';
+                strcpy(lbl_k.lblvalue, "");
+                gdk_threads_add_idle((GSourceFunc)update_labels,&lbl_k);
+
+                // update the main window labels
+                lbl_o.type = 'o';
+                strcpy(lbl_o.lblvalue, "");
+                gdk_threads_add_idle((GSourceFunc)update_labels,&lbl_o);
 
                 // set the struct to response
-
                 sprintf(buf_kaldi,"(%f) %s - %s", score, KWS, score > KWSTHRESHOLD ? "(above or equal threshold)" : "(below threshold)");
-                lbl_t.type = 'w';
-                strcpy(lbl_t.lblvalue, buf_kaldi);
-                gdk_threads_add_idle((GSourceFunc)update_labels,&lbl_t);
+                lbl_w.type = 'w';
+                strcpy(lbl_w.lblvalue, buf_kaldi);
+                gdk_threads_add_idle((GSourceFunc)update_labels,&lbl_w);
 
                 if (score >= KWSTHRESHOLD){
                     gdk_threads_add_idle((GSourceFunc)change_btncolor,(gpointer)"green");
                     system("play " MODELDIR "/spot.wav");
 
                     if (online_on){
-                        E_INFO("Go to Kaldi!  %s\n", hyp);
+                        E_INFO("KWS spot. Go to decoding!  %s\n", hyp);
                         active_decoder = 1;
-                        total_silence  = 0;
                         skip_bytes = 1;
+
+                        // change the search to offline kws
+                        ps_set_search(ps,"offline_kws");
+
                         // open the file that will be used by kaldi
                         pFile = fopen (MODELDIR "/audio.raw","w");
                     }
                 } else {
                     system("play " MODELDIR "/basso.wav");
                 }
+
+                // start the utterance
                 if (ps_start_utt(ps) < 0)
                     E_FATAL("Failed to start utterance\n");
             }
         } else {
             //E_INFO("PROCESSING TO ONLINE!\n");
-            if (skip_bytes > 0 && skip_bytes < 4){
+
+            // skip some bytes to remove the beep
+            if (skip_bytes > 0 && skip_bytes < 2){
                 skip_bytes++;
                 E_INFO("Skipping bytes..\n");
                 continue;
-            } else if (skip_bytes == 4) {
+            } else if (skip_bytes == 2) {
                 skip_bytes = 0;
             }
 
             if (pFile!=NULL)
             {
-
+                // write the bytes on the disk for kaldi
                 fwrite(adbuf,sizeof(int16),k,pFile);
+
+                // process on pocketsphinx
                 ps_process_raw(ps, adbuf, k, FALSE, FALSE);
+
+                // search for silence
                 in_speech = ps_get_in_speech(ps);
                 if (in_speech){
                     //E_INFO("Has speech...\n");
-                    total_silence = 0;
+                    //total_silence = 0;
                 } else {
                     //E_INFO("Don' Have speech...\n");
                     total_silence += 50;
                 }
             }
 
-            //E_INFO("Total Silence  %i\n", total_silence);
-            if (total_silence >= 1000){
-                E_INFO("ENOUGH SILENCE. DECODING ON KALDI..\n");
-                system("play " MODELDIR "/end_spot.wav");
-                active_decoder = 0;
-                fclose (pFile);
-                FILE *php = popen("php " MODELDIR "/kaldi.php " MODELDIR "/audio.raw", "r");
-                fgets(buf_kaldi, sizeof(buf_kaldi), php);
-                pclose(php);
-                E_INFO("Result: %s\n", buf_kaldi);
-                lbl_t.type = 'k';
-                strcpy(lbl_t.lblvalue, buf_kaldi);
-                gdk_threads_add_idle((GSourceFunc)update_labels,&lbl_t);
+            //Ok, we have enough silence;
+            if (total_silence >= 1500){
+                E_INFO("ENOUGH SILENCE.\n");
+
+                // reset the amount of silence
+                total_silence = 0;
+
+                E_INFO("DECODING ON PS\n");
+
+                // end the utterance
+                ps_end_utt(ps);
+                // search for the hypothesis
+                hyp = ps_get_hyp(ps, NULL );
+
+                if (hyp != NULL) {
+                    // ok. we found offline command.
+                    E_INFO("FOUND HYP OFFLINE!!  %s\n", hyp);
+
+                    // we get the score to check if is reliable
+                    score = get_score();
+
+                    // TODO : check if is reliable
+
+                    // - we send the command to OH
+                    char cmd[1024];
+                    sprintf(cmd,"curl --header 'Content-Type: text/plain' --request POST --data '%s' http://192.168.1.200:8080/rest/items/wemo_socket_Socket_1_0_221517K11005FE_state",strstr (hyp,"off") ? "OFF" : "ON");
+                    system(cmd);
+
+                    // update the main window labels
+                    sprintf(buf_kaldi,"(%f) %s - %s", score, hyp, score > KWSTHRESHOLD ? "(above or equal threshold)" : "(below threshold)");
+                    lbl_o.type = 'o';
+                    strcpy(lbl_o.lblvalue, buf_kaldi);
+                    gdk_threads_add_idle((GSourceFunc)update_labels,&lbl_o);
+                } else {
+                    lbl_o.type = 'o';
+                    strcpy(lbl_o.lblvalue, "no hypo found offline - going online");
+                    gdk_threads_add_idle((GSourceFunc)update_labels,&lbl_o);
+
+                    // if not found offline, we go to kaldi
+                    E_INFO("DECODING ON KALDI..\n");
+                    system("play " MODELDIR "/end_spot.wav");
+                    fclose (pFile);
+                    FILE *php = popen("php " MODELDIR "/kaldi.php " MODELDIR "/audio.raw", "r");
+                    fgets(buf_kaldi, sizeof(buf_kaldi), php);
+                    pclose(php);
+                    E_INFO("Result: %s\n", buf_kaldi);
+
+                    // - we send the command to OH
+                    char cmd[1024];
+                    sprintf(cmd,"curl --header 'Content-Type: text/plain' --request POST --data '%s' http://192.168.1.200:8080/rest/items/wemo_socket_Socket_1_0_221517K11005FE_state",strstr (buf_kaldi,"OFF") ? "OFF" : "ON");
+                    system(cmd);
+
+                    // update the main window labels
+                    lbl_k.type = 'k';
+                    strcpy(lbl_k.lblvalue, buf_kaldi);
+                    gdk_threads_add_idle((GSourceFunc)update_labels,&lbl_k);
+
+                }
+
+                // play the TTS with the result
                 sprintf(tts_cmd,"php " MODELDIR "/tts.php \"%s\"", buf_kaldi);
                 system(tts_cmd);
+                system("play tts.wav");
+
+                // update the main window color
                 gdk_threads_add_idle((GSourceFunc)change_btncolor,(gpointer)"yellow");
+
+                // then we send the decoder back to kws
+                active_decoder = 0;
+
+                // change the search to offline kws
+                ps_set_search(ps,"kws");
+
+                // start the utterance
+                if (ps_start_utt(ps) < 0)
+                    E_FATAL("Failed to start utterance\n");
+
             }
         }
         sleep_msec(50);
@@ -164,7 +246,8 @@ recognize_from_microphone(void *args)
     return NULL;
 }
 
-float get_score(){
+float
+get_score(){
     ps_seg_t *iter = ps_seg_iter(ps);
     float conf;
 
@@ -188,12 +271,11 @@ change_decoder_state(){
     return (decoder_paused = !decoder_paused);
 }
 
-void pocketsphinxstart(){
+void
+pocketsphinxstart(){
     config = cmd_ln_init(NULL, ps_args(), TRUE,
                          "-hmm", MODELDIR "models/std-en-us/",
-                         "-keyphrase", KWS,
                          "-dict", MODELDIR "models/cmudict-en-us.dict",
-                         "-kws_threshold", "1e-20",
                          NULL);
     if (config == NULL) {
         fprintf(stderr, "Failed to create config object, see log for details\n");
@@ -203,10 +285,17 @@ void pocketsphinxstart(){
         cmd_ln_free_r(config);
     }
 
+    // here we create the searches. one for kws one word, and another for the offline commands
+    ps_set_kws(ps,"kws",MODELDIR "models/kws.txt");
+    ps_set_kws(ps,"offline_kws",MODELDIR "models/offline_kws.txt");
+    // we'll start with the kws
+    ps_set_search(ps,"kws");
+
     E_INFO("COMPILED ON: %s, AT: %s\n\n", __DATE__, __TIME__);
 }
 
-void destroy_ps(){
+void
+destroy_ps(){
     ps_free(ps);
     cmd_ln_free_r(config);
 }
