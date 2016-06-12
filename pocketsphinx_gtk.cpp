@@ -14,7 +14,7 @@
 
 #define MIC_BUF_SIZE 4096
 #define KWS "foxy"
-#define KWSTHRESHOLD 0.97
+#define KWSTHRESHOLD 0.84
 
 #ifdef RPI
 #define MODELDIR  "/home/pi/projects/pocketsphinx-gtk/"
@@ -53,6 +53,8 @@ recognize_from_microphone(void *args)
     int total_silence = 0;
     int skip_bytes = 0;
     char buf_kaldi[512];
+    char tts_cmd[2048];
+
     lbl_s lbl_t;
 
     int active_decoder = 0; // 0 = pocketsphinx ; 1 = kaldi
@@ -141,6 +143,7 @@ recognize_from_microphone(void *args)
             //E_INFO("Total Silence  %i\n", total_silence);
             if (total_silence >= 1000){
                 E_INFO("ENOUGH SILENCE. DECODING ON KALDI..\n");
+                system("play " MODELDIR "/end_spot.wav");
                 active_decoder = 0;
                 fclose (pFile);
                 FILE *php = popen("php " MODELDIR "/kaldi.php " MODELDIR "/audio.raw", "r");
@@ -150,8 +153,9 @@ recognize_from_microphone(void *args)
                 lbl_t.type = 'k';
                 strcpy(lbl_t.lblvalue, buf_kaldi);
                 gdk_threads_add_idle((GSourceFunc)update_labels,&lbl_t);
+                sprintf(tts_cmd,"php " MODELDIR "/tts.php \"%s\"", buf_kaldi);
+                system(tts_cmd);
                 gdk_threads_add_idle((GSourceFunc)change_btncolor,(gpointer)"yellow");
-                system("play " MODELDIR "/end_spot.wav");
             }
         }
         sleep_msec(50);

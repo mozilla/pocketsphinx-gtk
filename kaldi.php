@@ -28,4 +28,5 @@ if ($obj->{'status'} == 'ok'){
 
 // close the session
 curl_close($request);
+
 ?>
