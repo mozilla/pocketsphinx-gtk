@@ -27,7 +27,7 @@ $file = '/Users/anatal/ClionProjects/pocketsphinx_gtk/tts.txt';
 file_put_contents($file, $synthval, LOCK_EX);
 
 // call flite
-$comando = '/Users/anatal/projects/mozilla/vaani-iot/mimic/bin/mimic -f /Users/anatal/ClionProjects/pocketsphinx_gtk/tts.txt -voice /Users/anatal/projects/mozilla/vaani-iot/mimic/voices/cmu_us_slt.flitevox tts.wav';
+$comando = 'flite_cmu_us_slt /Users/anatal/ClionProjects/pocketsphinx_gtk/tts.txt tts.wav';
 exec($comando);
 
 ?>
