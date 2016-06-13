@@ -109,7 +109,7 @@ recognize_from_microphone(void *args)
 
                 if (score >= KWSTHRESHOLD){
                     gdk_threads_add_idle((GSourceFunc)change_btncolor,(gpointer)"green");
-                    system("play " MODELDIR "/spot.wav");
+                    system("aplay " MODELDIR "/spot.wav");
 
                     if (online_on){
                         E_INFO("KWS spot. Go to decoding!  %s\n", hyp);
@@ -123,7 +123,7 @@ recognize_from_microphone(void *args)
                         pFile = fopen (MODELDIR "/audio.raw","w");
                     }
                 } else {
-                    system("play " MODELDIR "/basso.wav");
+                    system("aplay " MODELDIR "/basso.wav");
                 }
 
                 // start the utterance
@@ -201,7 +201,7 @@ recognize_from_microphone(void *args)
 
                     // if not found offline, we go to kaldi
                     E_INFO("DECODING ON KALDI..\n");
-                    system("play " MODELDIR "/end_spot.wav");
+                    system("aplay " MODELDIR "/end_spot.wav");
                     fclose (pFile);
                     FILE *php = popen("php " MODELDIR "/kaldi.php " MODELDIR "/audio.raw", "r");
                     fgets(buf_kaldi, sizeof(buf_kaldi), php);
@@ -220,10 +220,10 @@ recognize_from_microphone(void *args)
 
                 }
 
-                // play the TTS with the result
+                // aplay the TTS with the result
                 sprintf(tts_cmd,"php " MODELDIR "/tts.php \"%s\"", buf_kaldi);
                 system(tts_cmd);
-                system("play tts.wav");
+                system("aplay tts.wav");
 
                 // update the main window color
                 gdk_threads_add_idle((GSourceFunc)change_btncolor,(gpointer)"yellow");
